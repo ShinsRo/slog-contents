@@ -3,7 +3,8 @@ title: 'Powerlevel10k 테마에 Docker Context 표시하기'
 pubDate: 'Mar 12 2026'
 updatedDate: 'Mar 12 2026'
 heroImage: '../assets/2026-03-12-powerlevel10k-테마에-docker-context-표시하기/1.png'
-tags: ['DevOps', 'Docker', 'Zsh']
+tags: ['DevOps']
+description: 'Zsh Powerlevel10k 프롬프트에 현재 Docker context를 표시하는 설정'
 ---
 Docker를 여러 환경에서 쓰다 보면 지금 어떤 context를 보고 있는지 헷갈릴 때가 있다.
 특히 로컬 Docker 환경과 원격 Docker host를 번갈아 쓰면 더 그렇다.

@@ -3,7 +3,8 @@ title: '홈 서버 원격접속: Cloudflare Tunnel 활용하기'
 pubDate: 'Jan 18 2026'
 updatedDate: 'Jan 19 2026'
 heroImage: '../assets/2026-01-18-홈-서버-원격접속-cloudflare-tunnel-활용하기/1.jpg'
-tags: ['DevOps', 'Cloudflare', 'Home Server']
+tags: ['DevOps']
+description: '포트 포워딩 없이 Cloudflare Tunnel로 홈 서버에 외부 접속하는 방법'
 ---
 집에 구성한 리눅스 서버를 외부에서 접속하기 위한 방법 중 하나를 소개한다. 방식은 여러가지겠으나, 아래와 같은 기준으로 Cloudflare Tunnel을 선택했다.
 
