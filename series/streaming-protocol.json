@@ -1,0 +1,9 @@
+{
+	"name": "Streaming Protocols",
+	"posts": [
+		{ "title": "TCP 위의 스트리밍: Long Polling, SSE, WebSocket", "badge": "WIP" },
+		{ "title": "HTTP 적응형 스트리밍: HLS와 DASH", "badge": "TBD" },
+		{ "title": "UDP 기반 실시간 전송: RTP / RTCP / RTSP", "badge": "TBD" },
+		{ "title": "P2P 스트리밍: WebRTC", "badge": "TBD" }
+	]
+}
