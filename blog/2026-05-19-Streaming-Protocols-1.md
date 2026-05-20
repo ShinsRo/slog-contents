@@ -52,6 +52,49 @@ Client          Server
   |                    |
 ```
 
+### Spring Kotlin 구현 예시
+
+`DeferredResult`를 사용하면 요청을 즉시 반환하지 않고 데이터가 생길 때까지 보류할 수 있다.
+
+```kotlin
+@RestController
+@RequestMapping("/poll")
+class LongPollingController {
+
+    private val queue = LinkedBlockingQueue<String>()
+
+    @GetMapping
+    fun poll(): DeferredResult<String> {
+        val result = DeferredResult<String>(30_000L, "timeout")
+
+        Thread {
+            // 큐에 아이템이 생길 때까지 최대 29초 블로킹
+            val message = queue.poll(29, TimeUnit.SECONDS)
+            if (message != null) result.setResult(message)
+        }.start()
+
+        return result
+    }
+
+    @PostMapping("/publish")
+    fun publish(@RequestBody message: String) {
+        queue.offer(message)
+    }
+}
+```
+
+`DeferredResult`의 첫 번째 인자는 타임아웃(ms)이고, 두 번째는 타임아웃 시 반환할 값이다. 클라이언트는 응답을 받으면 곧바로 다음 요청을 보내는 루프를 구성한다.
+
+```javascript
+async function poll() {
+    while (true) {
+        const res = await fetch('/poll')
+        const data = await res.text()
+        if (data !== 'timeout') console.log(data)
+    }
+}
+```
+
 ### 한계
 
 매 응답마다 HTTP 요청이 새로 시작되므로, 헤더를 포함한 연결 수립 비용이 반복된다. 데이터가 자주 발생하는 상황에서는 일반 폴링과 비용 차이가 거의 없어진다. 또한 서버 입장에서는 다수의 연결을 장시간 열어두기 때문에 리소스 부담이 크다.
@@ -76,6 +119,70 @@ Client                    Server
 ```
 
 단방향(서버 → 클라이언트)이며, 브라우저가 `EventSource`를 기본 지원한다.
+
+### Spring Kotlin 구현 예시
+
+Spring WebFlux를 사용하면 `Flux<ServerSentEvent<T>>`로 SSE 엔드포인트를 간결하게 구현할 수 있다.
+
+```kotlin
+@RestController
+@RequestMapping("/events")
+class SseController {
+
+    @GetMapping(produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
+    fun stream(): Flux<ServerSentEvent<String>> {
+        return Flux.interval(Duration.ofSeconds(1))
+            .map { seq ->
+                ServerSentEvent.builder<String>()
+                    .id(seq.toString())
+                    .event("message")
+                    .data("tick $seq")
+                    .build()
+            }
+    }
+}
+```
+
+Spring MVC 환경이라면 `SseEmitter`를 사용한다. 별도 스레드에서 이벤트를 전송하고, 완료 시 `complete()`를 호출한다.
+
+```kotlin
+@RestController
+@RequestMapping("/events")
+class SseController {
+
+    @GetMapping(produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
+    fun stream(): SseEmitter {
+        val emitter = SseEmitter()
+
+        Thread {
+            repeat(5) { i ->
+                emitter.send(
+                    SseEmitter.event()
+                        .id(i.toString())
+                        .name("message")
+                        .data("tick $i")
+                )
+                Thread.sleep(1000)
+            }
+            emitter.complete()
+        }.start()
+
+        return emitter
+    }
+}
+```
+
+클라이언트에서는 `EventSource`로 연결한다.
+
+```javascript
+const source = new EventSource('/events')
+
+source.addEventListener('message', (e) => {
+    console.log(e.data)
+})
+
+source.onerror = () => source.close()
+```
 
 ### 이벤트 형식
 
@@ -142,6 +249,55 @@ WebSocket은 데이터를 프레임 단위로 전송한다. 각 프레임은 헤
 - `0x9` / `0xA`: Ping / Pong (연결 유지 확인)
 
 클라이언트에서 서버로 보내는 프레임은 반드시 마스킹 처리된다. 이는 프록시 서버의 캐시 오염 공격을 막기 위한 규칙이다.
+
+### Spring Kotlin 구현 예시
+
+Spring WebSocket은 `WebSocketHandler`를 구현하거나, STOMP를 사용하는 두 가지 방식이 있다. 여기서는 STOMP 없이 순수 WebSocket 핸들러를 사용한다.
+
+```kotlin
+@Component
+class ChatWebSocketHandler : TextWebSocketHandler() {
+
+    private val sessions = ConcurrentHashMap<String, WebSocketSession>()
+
+    override fun afterConnectionEstablished(session: WebSocketSession) {
+        sessions[session.id] = session
+    }
+
+    override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
+        // 연결된 모든 클라이언트에게 브로드캐스트
+        sessions.values.forEach { it.sendMessage(message) }
+    }
+
+    override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
+        sessions.remove(session.id)
+    }
+}
+```
+
+핸들러를 엔드포인트에 등록한다.
+
+```kotlin
+@Configuration
+@EnableWebSocket
+class WebSocketConfig(
+    private val handler: ChatWebSocketHandler
+) : WebSocketConfigurer {
+
+    override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
+        registry.addHandler(handler, "/chat").setAllowedOrigins("*")
+    }
+}
+```
+
+클라이언트에서는 `WebSocket` API로 연결한다.
+
+```javascript
+const ws = new WebSocket('ws://localhost:8080/chat')
+
+ws.onmessage = (e) => console.log(e.data)
+ws.onopen = () => ws.send('hello')
+```
 
 ## 비교 — 언제 무엇을 쓸까
 
