@@ -3,7 +3,7 @@
 	"posts": [
 		{ "title": "TCP 위의 스트리밍: Long Polling, SSE, WebSocket", "slug": "2026-05-19-streaming-protocols-1" },
 		{ "title": "HTTP 적응형 스트리밍: HLS와 DASH", "slug": "2026-05-20-streaming-protocols-2" },
-		{ "title": "UDP 기반 실시간 전송: RTP / RTCP / RTSP", "badge": "TBD" },
+		{ "title": "UDP 기반 실시간 전송: RTP, RTCP, RTSP, SRT", "slug": "2026-05-20-streaming-protocols-3" },
 		{ "title": "P2P 스트리밍: WebRTC", "badge": "TBD" }
 	]
 }
