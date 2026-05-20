@@ -31,6 +31,7 @@
 - RTP: 미디어 데이터 전송
 - RTCP: 품질 피드백 (패킷 손실, 지터)
 - RTSP: 재생 제어 (VoD, CCTV)
+- SRT: RTMP를 대체하는 UDP 기반 ingest 프로토콜
 - QUIC과의 관계 → HTTP/3 편 참조
 
 ### P2P 스트리밍: WebRTC
