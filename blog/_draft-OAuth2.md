@@ -1,13 +1,7 @@
 # OAuth2 — 글 계획
 
-## 시리즈 구성
+## 다룰 내용
 
-### 1편: 신뢰를 위임한다는 것
-
-역사와 구조, 동작 흐름을 다룬다. 독자적으로도 읽힐 수 있어야 하지만,
-글 말미에 "이 흐름에서 각 엔티티가 실제로 무엇을 어떻게 다뤄야 하는가"를 2편에서 본격적으로 다룬다는 명분을 만들어야 한다.
-
-**다룰 내용:**
 - 역사 — OAuth 1.0 → 2.0 전환이 아니라, 인증/인가 표준의 변천사 전체
   - Kerberos / SAML → OAuth2 + OIDC → FIDO2 / Passkeys 흐름
   - 각 시대마다 어떤 문제를 풀려 했는가
@@ -17,17 +11,34 @@
 - Grant Types 동작 흐름 (Authorization Code + PKCE 중심, 나머지는 간략히)
 - OIDC — "소셜 로그인은 사실 OIDC"
 
-### 2편 — 각 엔티티의 관리 전략 (본론)
-
-**핵심 주제:**
-> OAuth2 흐름에서 발생하는 데이터를 각 엔티티가 어떻게 관리해야 하는가
-
-- Client의 토큰 저장 전략
-- Authorization Server의 발급/추적/폐기
-- Resource Server의 검증과 캐싱
-- 솔루션 (Keycloak, Zitadel 등) — 직접 구현 vs 위임
-
 ---
+
+## 역사
+
+OAuth2 이전
+
+프로토콜	연도	특징
+HTTP Basic / Digest Auth	1990s	username:password 전달. 가장 단순
+Kerberos	1988	티켓 기반. Windows AD / 기업 내부망
+SAML 1.0 / 2.0	2002/2005	XML 기반 SSO. 기업 환경에서 여전히 많이 쓰임
+OpenID 1.0 / 2.0	2005/2007	분산 신원 인증. OIDC의 전신. 지금은 거의 사용 안 함
+OAuth 1.0 / 1.0a	2007/2009	서명 기반. 복잡해서 OAuth2로 대체
+OAuth2 이후 / 확장
+
+프로토콜 / 표준	연도	특징
+OIDC	2014	OAuth2 위에 인증 레이어 추가
+PKCE	2015	Public Client 보안 확장
+FIDO2 / WebAuthn	2018	비밀번호 없는 인증. 생체인식, 하드웨어 키
+Passkeys	2022~	FIDO2 기반. Apple / Google / MS 공동 추진
+DPoP	2023	토큰을 키 쌍에 바인딩. 탈취 방지 강화
+GNAP	진행 중	"OAuth3"로 불림. OAuth2 한계 해결 시도
+OAuth 2.1	초안	OAuth2 모범 사례 통합 (Implicit, ROPC 공식 제거)
+목적이 다른 인접 표준들
+
+SCIM — 사용자 계정 프로비저닝 (인증이 아니라 계정 동기화)
+SPIFFE / SPIRE — 쿠버네티스 등 워크로드 신원 (서비스 간 mTLS)
+Verifiable Credentials / DID — W3C 탈중앙화 신원. 아직 초기 단계
+흐름으로 보면 SAML → OAuth2 + OIDC → Passkeys / FIDO2 방향, 서버 간 신원은 mTLS / SPIFFE 쪽으로 가는 추세
 
 ## 핵심 개념 정리
 
@@ -81,56 +92,7 @@ OIDC는 "이 사람이 누구인가"를 OAuth2 위에 얹은 것.
 
 ---
 
-## 2편 세부 내용 (미결)
-
-### 엔티티별 관리 전략
-
-**Client**
-- access_token: 메모리 저장 권장 (XSS 방어), httpOnly 쿠키 차선
-- refresh_token: 안전한 저장소 필요, 서버 사이드 보관 권장
-- client_secret: 환경변수 / Secret Manager, 절대 코드에 포함 금지
-- PKCE `code_verifier`: 요청 단위 임시 저장 후 즉시 폐기
-- `state` 파라미터: CSRF 방지용, 세션에 저장 후 검증
-
-**Authorization Server**
-- authorization_code: 단기(10분), 1회용, 재사용 시 관련 토큰 전체 폐기
-- access_token 형식: JWT(자체 검증) vs Opaque(서버 조회 필요) 선택
-- refresh_token Rotation: 사용 시 새 토큰 발급 + 이전 토큰 무효화
-- 토큰 폐기 엔드포인트 (RFC 7009)
-- JWKS 엔드포인트: RS가 서명 검증에 쓰는 공개키 제공
-
-**Resource Server**
-- JWT: JWKS로 서명 검증, 만료 / scope 확인
-- Opaque: Authorization Server에 Introspection 요청 (RFC 7662)
-- 검증 결과 캐싱 전략 (매 요청마다 JWKS 조회는 비효율)
-
-### 솔루션
-
-#### 셀프 호스팅
-
-| 솔루션 | 언어 | 특징 |
-|---|---|---|
-| Keycloak | Java | Red Hat. 가장 많이 쓰이는 오픈소스 IAM |
-| Zitadel | Go | 클라우드 네이티브, 최근 주목 |
-| Ory Hydra | Go | 경량 OAuth2/OIDC 서버, 헤드리스 |
-| Authentik | Python | 관리 UI 세련됨, 설치 쉬움 |
-| Dex | Go | OIDC 브릿지, 외부 IdP 연결 특화 |
-| Spring Authorization Server | Java | Spring 공식 OAuth2 AS |
-
-#### SaaS
-
-| 솔루션 | 특징 |
-|---|---|
-| Auth0 (Okta) | 가장 많이 쓰이는 SaaS IAM |
-| AWS Cognito | AWS 생태계 통합 |
-| Clerk | 개발자 경험 중심, 최근 인기 |
-| SuperTokens | 오픈소스 + SaaS 하이브리드 |
-
----
-
 ## 메모 / 미결 사항
 
-- 비교 대상: OAuth 1.0 vs 2.0, OAuth2 vs SAML, JWT와의 관계 → 1편에 넣을지 2편에 넣을지
-- Refresh Token 탈취 시나리오와 Rotation 전략 깊이
+- 비교 대상: OAuth 1.0 vs 2.0, OAuth2 vs SAML, JWT와의 관계 → 어디에 넣을지
 - PKCE code_verifier / code_challenge 생성 과정까지 다룰지
-- 구현 예시 언어: Spring Kotlin 위주
